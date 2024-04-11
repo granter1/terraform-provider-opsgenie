@@ -574,27 +574,23 @@ func expandOpsgenieFilter(input []interface{}) integration.Filter {
 
 func expandOpsgenieIntegrationActionConditions(input *schema.Set) []og.Condition {
 	conditions := make([]og.Condition, 0, input.Len())
+	condition := og.Condition{}
 	if input == nil {
 		return conditions
 	}
 
 	for _, v := range input.List() {
-		condition := og.Condition{}
 		config := v.(map[string]interface{})
 		not_value := config["not"].(bool)
+		order := config["order"].(int)
 		condition.Field = og.ConditionFieldType(config["field"].(string))
 		condition.Operation = og.ConditionOperation(config["operation"].(string))
+		condition.Key = config["key"].(string)
 		condition.IsNot = &not_value
 		condition.ExpectedValue = config["expected_value"].(string)
-		if condition.Field == og.ExtraProperties {
-			key := config["key"].(string)
-			if key != "" {
-				condition.Key = config["key"].(string)
-			}
-		}
+		condition.Order = &order
 		conditions = append(conditions, condition)
 	}
-
 	return conditions
 }
 
