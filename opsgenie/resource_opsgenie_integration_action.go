@@ -2,10 +2,11 @@ package opsgenie
 
 import (
 	"context"
+	"log"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	ogClient "github.com/opsgenie/opsgenie-go-sdk-v2/client"
 	"github.com/opsgenie/opsgenie-go-sdk-v2/og"
-	"log"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/opsgenie/opsgenie-go-sdk-v2/integration"
@@ -59,7 +60,7 @@ func resourceOpsgenieIntegrationAction() *schema.Resource {
 										ValidateFunc: validation.StringInSlice([]string{"match-all", "match-any-condition", "match-all-conditions"}, false),
 									},
 									"conditions": {
-										Type:     schema.TypeList,
+										Type:     schema.TypeSet,
 										Optional: true,
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
@@ -234,7 +235,7 @@ func resourceOpsgenieIntegrationAction() *schema.Resource {
 										ValidateFunc: validation.StringInSlice([]string{"match-all", "match-any-condition", "match-all-conditions"}, false),
 									},
 									"conditions": {
-										Type:     schema.TypeList,
+										Type:     schema.TypeSet,
 										Optional: true,
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
@@ -317,7 +318,7 @@ func resourceOpsgenieIntegrationAction() *schema.Resource {
 										ValidateFunc: validation.StringInSlice([]string{"match-all", "match-any-condition", "match-all-conditions"}, false),
 									},
 									"conditions": {
-										Type:     schema.TypeList,
+										Type:     schema.TypeSet,
 										Optional: true,
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
@@ -400,7 +401,7 @@ func resourceOpsgenieIntegrationAction() *schema.Resource {
 										ValidateFunc: validation.StringInSlice([]string{"match-all", "match-any-condition", "match-all-conditions"}, false),
 									},
 									"conditions": {
-										Type:     schema.TypeList,
+										Type:     schema.TypeSet,
 										Optional: true,
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
@@ -483,7 +484,7 @@ func resourceOpsgenieIntegrationAction() *schema.Resource {
 										ValidateFunc: validation.StringInSlice([]string{"match-all", "match-any-condition", "match-all-conditions"}, false),
 									},
 									"conditions": {
-										Type:     schema.TypeList,
+										Type:     schema.TypeSet,
 										Optional: true,
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
@@ -560,15 +561,42 @@ func expandOpsgenieActionResponders(input []interface{}) []integration.Responder
 	return responders
 }
 
-func expandOpsgenieFilter(input []interface{}) integration.Filter {
+func expandOpsgenieFilter(input *schema.Set) integration.Filter {
 	filter := integration.Filter{}
-	for _, r := range input {
+	for _, r := range input.List() {
 		inputMap := r.(map[string]interface{})
-		conditions := expandOpsgenieConditions(inputMap["conditions"].([]interface{}))
+		conditions := expandOpsgenieIntegrationActionConditions(inputMap["conditions"].(*schema.Set))
 		filter.Conditions = conditions
 		filter.ConditionMatchType = og.ConditionMatchType(inputMap["type"].(string))
 	}
 	return filter
+}
+
+func expandOpsgenieIntegrationActionConditions(input *schema.Set) []og.Condition {
+
+	conditions := make([]og.Condition, 0, input.Len())
+
+	if input == nil {
+		return conditions
+	}
+	for _, v := range input.List() {
+		inputMap := v.(map[string]interface{})
+		condition := og.Condition{}
+		condition.Field = og.ConditionFieldType(inputMap["field"].(string))
+		isNot := inputMap["not"].(bool)
+		condition.IsNot = &isNot
+		condition.Operation = og.ConditionOperation(inputMap["operation"].(string))
+		condition.ExpectedValue = inputMap["expected_value"].(string)
+		key := inputMap["key"].(string)
+		if key != "" {
+			condition.Key = inputMap["key"].(string)
+		}
+		order := inputMap["order"].(int)
+		condition.Order = &order
+		conditions = append(conditions, condition)
+	}
+
+	return conditions
 }
 
 func expandOpsgenieIntegrationActions(input interface{}) []integration.IntegrationAction {
@@ -598,7 +626,7 @@ func expandOpsgenieIntegrationActions(input interface{}) []integration.Integrati
 		if customPriority := inputMap["custom_priority"]; customPriority != nil {
 			action.CustomPriority = customPriority.(string)
 		}
-		filters := expandOpsgenieFilter(inputMap["filter"].([]interface{}))
+		filters := expandOpsgenieFilter(inputMap["filter"].(*schema.Set))
 
 		// If a filter is not included in the resource, this will still set an empty filter. `omitempty` will
 		// only leave out the key when marshaling the Json if its value is `nil`
