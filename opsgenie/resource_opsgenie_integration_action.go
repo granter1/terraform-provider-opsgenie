@@ -561,9 +561,9 @@ func expandOpsgenieActionResponders(input []interface{}) []integration.Responder
 	return responders
 }
 
-func expandOpsgenieFilter(input *schema.Set) integration.Filter {
+func expandOpsgenieFilter(input []interface{}) integration.Filter {
 	filter := integration.Filter{}
-	for _, r := range input.List() {
+	for _, r := range input {
 		inputMap := r.(map[string]interface{})
 		conditions := expandOpsgenieIntegrationActionConditions(inputMap["conditions"].(*schema.Set))
 		filter.Conditions = conditions
@@ -626,7 +626,7 @@ func expandOpsgenieIntegrationActions(input interface{}) []integration.Integrati
 		if customPriority := inputMap["custom_priority"]; customPriority != nil {
 			action.CustomPriority = customPriority.(string)
 		}
-		filters := expandOpsgenieFilter(inputMap["filter"].(*schema.Set))
+		filters := expandOpsgenieFilter(inputMap["filter"].([]interface{}))
 
 		// If a filter is not included in the resource, this will still set an empty filter. `omitempty` will
 		// only leave out the key when marshaling the Json if its value is `nil`
