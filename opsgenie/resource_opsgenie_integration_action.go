@@ -573,26 +573,25 @@ func expandOpsgenieFilter(input []interface{}) integration.Filter {
 }
 
 func expandOpsgenieIntegrationActionConditions(input *schema.Set) []og.Condition {
-
 	conditions := make([]og.Condition, 0, input.Len())
-
 	if input == nil {
 		return conditions
 	}
+
 	for _, v := range input.List() {
-		inputMap := v.(map[string]interface{})
 		condition := og.Condition{}
-		condition.Field = og.ConditionFieldType(inputMap["field"].(string))
-		isNot := inputMap["not"].(bool)
-		condition.IsNot = &isNot
-		condition.Operation = og.ConditionOperation(inputMap["operation"].(string))
-		condition.ExpectedValue = inputMap["expected_value"].(string)
-		key := inputMap["key"].(string)
-		if key != "" {
-			condition.Key = inputMap["key"].(string)
+		config := v.(map[string]interface{})
+		not_value := config["not"].(bool)
+		condition.Field = og.ConditionFieldType(config["field"].(string))
+		condition.Operation = og.ConditionOperation(config["operation"].(string))
+		condition.IsNot = &not_value
+		condition.ExpectedValue = config["expected_value"].(string)
+		if condition.Field == og.ExtraProperties {
+			key := config["key"].(string)
+			if key != "" {
+				condition.Key = config["key"].(string)
+			}
 		}
-		order := inputMap["order"].(int)
-		condition.Order = &order
 		conditions = append(conditions, condition)
 	}
 
