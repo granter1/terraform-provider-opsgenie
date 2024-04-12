@@ -2,10 +2,11 @@ package opsgenie
 
 import (
 	"context"
+	"log"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	ogClient "github.com/opsgenie/opsgenie-go-sdk-v2/client"
 	"github.com/opsgenie/opsgenie-go-sdk-v2/og"
-	"log"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/opsgenie/opsgenie-go-sdk-v2/integration"
@@ -50,16 +51,18 @@ func resourceOpsgenieIntegrationAction() *schema.Resource {
 						},
 						"filter": {
 							Type:     schema.TypeList,
-							Optional: true,
+							Required: true,
+							MaxItems: 1,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"type": {
 										Type:         schema.TypeString,
-										Required:     true,
+										Optional:     true,
+										Default:      "match-all",
 										ValidateFunc: validation.StringInSlice([]string{"match-all", "match-any-condition", "match-all-conditions"}, false),
 									},
 									"conditions": {
-										Type:     schema.TypeList,
+										Type:     schema.TypeSet,
 										Optional: true,
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
@@ -67,26 +70,34 @@ func resourceOpsgenieIntegrationAction() *schema.Resource {
 													Type:     schema.TypeString,
 													Required: true,
 												},
-												"key": {
-													Type:     schema.TypeString,
-													Optional: true,
-												},
-												"not": {
-													Type:     schema.TypeBool,
-													Optional: true,
-													Default:  false,
-												},
 												"operation": {
 													Type:     schema.TypeString,
 													Required: true,
+													ValidateFunc: validation.StringInSlice([]string{
+														"matches", "contains", "starts-with", "ends-with", "equals", "contains-key",
+														"contains-value", "greater-than", "less-than", "is-empty", "equals-ignore-whitespace",
+													}, false),
+												},
+												"key": {
+													Type:        schema.TypeString,
+													Optional:    true,
+													Description: "If 'field' is set as 'extra-properties', key could be used for key-value pair",
+												},
+												"not": {
+													Type:        schema.TypeBool,
+													Optional:    true,
+													Description: "Indicates behaviour of the given operation. Default value is false",
+													Default:     false,
 												},
 												"expected_value": {
-													Type:     schema.TypeString,
-													Optional: true,
+													Type:        schema.TypeString,
+													Optional:    true,
+													Description: "User defined value that will be compared with alert field according to the operation. Default value is empty string",
 												},
 												"order": {
-													Type:     schema.TypeInt,
-													Optional: true,
+													Type:        schema.TypeInt,
+													Optional:    true,
+													Description: "Order of the condition in conditions list",
 												},
 											},
 										},
@@ -234,7 +245,7 @@ func resourceOpsgenieIntegrationAction() *schema.Resource {
 										ValidateFunc: validation.StringInSlice([]string{"match-all", "match-any-condition", "match-all-conditions"}, false),
 									},
 									"conditions": {
-										Type:     schema.TypeList,
+										Type:     schema.TypeSet,
 										Optional: true,
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
@@ -317,7 +328,7 @@ func resourceOpsgenieIntegrationAction() *schema.Resource {
 										ValidateFunc: validation.StringInSlice([]string{"match-all", "match-any-condition", "match-all-conditions"}, false),
 									},
 									"conditions": {
-										Type:     schema.TypeList,
+										Type:     schema.TypeSet,
 										Optional: true,
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
@@ -400,7 +411,7 @@ func resourceOpsgenieIntegrationAction() *schema.Resource {
 										ValidateFunc: validation.StringInSlice([]string{"match-all", "match-any-condition", "match-all-conditions"}, false),
 									},
 									"conditions": {
-										Type:     schema.TypeList,
+										Type:     schema.TypeSet,
 										Optional: true,
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
@@ -483,7 +494,7 @@ func resourceOpsgenieIntegrationAction() *schema.Resource {
 										ValidateFunc: validation.StringInSlice([]string{"match-all", "match-any-condition", "match-all-conditions"}, false),
 									},
 									"conditions": {
-										Type:     schema.TypeList,
+										Type:     schema.TypeSet,
 										Optional: true,
 										Elem: &schema.Resource{
 											Schema: map[string]*schema.Schema{
@@ -564,11 +575,33 @@ func expandOpsgenieFilter(input []interface{}) integration.Filter {
 	filter := integration.Filter{}
 	for _, r := range input {
 		inputMap := r.(map[string]interface{})
-		conditions := expandOpsgenieConditions(inputMap["conditions"].([]interface{}))
+		conditions := expandOpsgenieIntegrationActionConditions(inputMap["conditions"].(*schema.Set))
 		filter.Conditions = conditions
 		filter.ConditionMatchType = og.ConditionMatchType(inputMap["type"].(string))
 	}
 	return filter
+}
+
+func expandOpsgenieIntegrationActionConditions(input *schema.Set) []og.Condition {
+	conditions := make([]og.Condition, 0, input.Len())
+	condition := og.Condition{}
+	if input == nil {
+		return conditions
+	}
+
+	for _, v := range input.List() {
+		config := v.(map[string]interface{})
+		not_value := config["not"].(bool)
+		order := config["order"].(int)
+		condition.Field = og.ConditionFieldType(config["field"].(string))
+		condition.Operation = og.ConditionOperation(config["operation"].(string))
+		condition.Key = config["key"].(string)
+		condition.IsNot = &not_value
+		condition.ExpectedValue = config["expected_value"].(string)
+		condition.Order = &order
+		conditions = append(conditions, condition)
+	}
+	return conditions
 }
 
 func expandOpsgenieIntegrationActions(input interface{}) []integration.IntegrationAction {
