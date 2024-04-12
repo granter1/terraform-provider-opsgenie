@@ -677,22 +677,27 @@ func flattenOpsgenieFilter(input *integration.Filter) []map[string]interface{} {
 	rules := make([]map[string]interface{}, 0, 1)
 	out := make(map[string]interface{})
 	out["type"] = input.ConditionMatchType
-	conditions := make([]map[string]interface{}, 0, len(input.Conditions))
-	for _, r := range input.Conditions {
-		conditionMap := make(map[string]interface{})
-		conditionMap["order"] = r.Order
-		if r.Key != "" {
-			conditionMap["key"] = r.Key
-		}
-		conditionMap["expected_value"] = r.ExpectedValue
-		conditionMap["operation"] = r.Operation
-		conditionMap["field"] = r.Field
-		conditionMap["not"] = r.IsNot
-		conditions = append(conditions, conditionMap)
+	if input.Conditions != nil {
+		out["conditions"] = flattenOpsGenieFilterConditions(input.Conditions)
 	}
-	out["conditions"] = conditions
 	rules = append(rules, out)
 	return rules
+}
+
+func flattenOpsGenieFilterConditions(input []og.Condition) []map[string]interface{} {
+	output := make([]map[string]interface{}, 0, len(input))
+	for _, r := range input {
+		element := make(map[string]interface{})
+		element["field"] = r.Field
+		element["operation"] = r.Operation
+		element["key"] = r.Key
+		element["not"] = r.IsNot
+		element["expected_value"] = r.ExpectedValue
+		element["order"] = r.Order
+		output = append(output, element)
+	}
+
+	return output
 }
 
 func flattenActionTags(input *schema.Set) []string {
