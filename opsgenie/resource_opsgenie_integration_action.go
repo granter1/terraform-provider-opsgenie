@@ -69,10 +69,6 @@ func resourceOpsgenieIntegrationAction() *schema.Resource {
 												"field": {
 													Type:     schema.TypeString,
 													Required: true,
-													ValidateFunc: validation.StringInSlice([]string{
-														"message", "alias", "description", "source", "entity", "tags",
-														"actions", "details", "extra-properties", "responders", "teams", "priority",
-													}, false),
 												},
 												"operation": {
 													Type:     schema.TypeString,
