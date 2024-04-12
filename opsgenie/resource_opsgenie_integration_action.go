@@ -51,12 +51,14 @@ func resourceOpsgenieIntegrationAction() *schema.Resource {
 						},
 						"filter": {
 							Type:     schema.TypeList,
-							Optional: true,
+							Required: true,
+							MaxItems: 1,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"type": {
 										Type:         schema.TypeString,
-										Required:     true,
+										Optional:     true,
+										Default:      "match-all",
 										ValidateFunc: validation.StringInSlice([]string{"match-all", "match-any-condition", "match-all-conditions"}, false),
 									},
 									"conditions": {
@@ -67,27 +69,39 @@ func resourceOpsgenieIntegrationAction() *schema.Resource {
 												"field": {
 													Type:     schema.TypeString,
 													Required: true,
-												},
-												"key": {
-													Type:     schema.TypeString,
-													Optional: true,
-												},
-												"not": {
-													Type:     schema.TypeBool,
-													Optional: true,
-													Default:  false,
+													ValidateFunc: validation.StringInSlice([]string{
+														"message", "alias", "description", "source", "entity", "tags",
+														"actions", "details", "extra-properties", "responders", "teams", "priority",
+													}, false),
 												},
 												"operation": {
 													Type:     schema.TypeString,
 													Required: true,
+													ValidateFunc: validation.StringInSlice([]string{
+														"matches", "contains", "starts-with", "ends-with", "equals", "contains-key",
+														"contains-value", "greater-than", "less-than", "is-empty", "equals-ignore-whitespace",
+													}, false),
+												},
+												"key": {
+													Type:        schema.TypeString,
+													Optional:    true,
+													Description: "If 'field' is set as 'extra-properties', key could be used for key-value pair",
+												},
+												"not": {
+													Type:        schema.TypeBool,
+													Optional:    true,
+													Description: "Indicates behaviour of the given operation. Default value is false",
+													Default:     false,
 												},
 												"expected_value": {
-													Type:     schema.TypeString,
-													Optional: true,
+													Type:        schema.TypeString,
+													Optional:    true,
+													Description: "User defined value that will be compared with alert field according to the operation. Default value is empty string",
 												},
 												"order": {
-													Type:     schema.TypeInt,
-													Optional: true,
+													Type:        schema.TypeInt,
+													Optional:    true,
+													Description: "Order of the condition in conditions list",
 												},
 											},
 										},
